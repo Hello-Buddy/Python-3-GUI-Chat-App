@@ -1,0 +1,1 @@
+A simple chat server an client written in python 3 using PyQt4(sudo apt-get install python-qt4 for GUI. You can connect to a server someone has created on their computer or create your own server by running the server file(python3 HCS.py PORT).
