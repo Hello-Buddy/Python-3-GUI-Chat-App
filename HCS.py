@@ -90,7 +90,7 @@ class Server:
                     except BrokenPipeError:
                         self.stop_thread(addr, conn)
                 else:
-                    if message != "client_break":
+                    if message != "client_break" and message != "":
                         logging.info("{} said: {}".format(username, message))
                         self.broadcast(username + ": " + message, conn)
                     elif message == "client_break":
