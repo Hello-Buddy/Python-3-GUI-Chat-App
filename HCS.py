@@ -41,19 +41,19 @@ class Server:
 
 		counter = 1
 		while True:
-			if self.encryption_method and counter == 1:
-				self.send_message("encrypt_TRUE", conn)
-				while True:
-					if self.encryption_method:
+			if counter == 1:
+				if self.encryption_method:
+					self.send_message("encrypt_TRUE", conn)
+					while True:
 						encrypt_test = self.test_encryption(conn, addr)
 						if encrypt_test:
 							counter = 2
 							break
 						else:
 							self.send_message("wrong", conn)
-					else:
-						self.send_message("encrypt_FALSE", conn)
-						break
+				else:
+					self.send_message("encrypt_FALSE", conn)
+					counter = 2
 			username = self.recv_message(conn, addr)
 			if username == "client_break":
 				self.stop_thread(addr, conn)
@@ -119,7 +119,7 @@ class Server:
 							person.send(self.encryption_method.encrypt(message))
 						else:
 							person.send(str.encode(message))
-					except BrokenPipeError:
+					except (BrokenPipeError, ConnectionResetError):
 						pass
 			else:
 				self.stop_thread(addr, conn)

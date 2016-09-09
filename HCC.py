@@ -51,7 +51,7 @@ class MainSend(QtGui.QMainWindow):
 	def recv_message_field(self):
 
 		self.recv_message_field_obj = QtGui.QTextEdit(self)
-		self.recv_message_field_obj.setStyleSheet("background-color: #9b9897; color: #fff;")
+		self.recv_message_field_obj.setStyleSheet("background-color: #9b9897; color: #fff; border-color: #00ffbc")
 		self.recv_message_field_obj.move(10, 10)
 		self.recv_message_field_obj.resize(780, 470)
 		self.recv_message_field_obj.setReadOnly(True)
@@ -62,7 +62,7 @@ class MainSend(QtGui.QMainWindow):
 	def send_message_field(self):
 
 		self.send_message_field_obj = QtGui.QTextEdit(self)
-		self.send_message_field_obj.setStyleSheet("background-color: #9b9897; color: #fff;")
+		self.send_message_field_obj.setStyleSheet("background-color: #9b9897; color: #fff; border-color: #00ffbc")
 		self.send_message_field_obj.move(120, 490)
 		self.send_message_field_obj.resize(670, 100)
 
@@ -73,21 +73,25 @@ class MainSend(QtGui.QMainWindow):
 		"""Sends a message to the server"""
 
 		text_to_append = self.send_message_field_obj.toPlainText()
+		text_to_append = text_to_append.replace("\n", "")
 		if self.encryption_method:
 			text_to_send = self.encryption_method.encrypt(text_to_append)
-		if text_to_send:
-			if text_to_send != "client_break" and text_to_send != "server_break":
-				self.recv_message_field_obj.append("You: " + text_to_append)
-				client_send_ret = self.client.send_message(text_to_send)
-				self.send_message_field_obj.repaint()
+		if text_to_append:
+			if text_to_append != "client_break" and text_to_append != "server_break":
+				#Add the color to this so youre user name appears different
+				username_append = "<span style=\"color: #00ffbc; font-weight: 700\">You: </span>"
+				self.recv_message_field_obj.append(username_append + text_to_append)
+				if self.encryption_method:
+					client_send_ret = self.client.send_message(text_to_send)
+				else:
+					client_send_ret = self.client.send_message(text_to_append)
 				self.send_message_field_obj.setText("")
 				if client_send_ret == "broken":
 					self.recv_message_field_obj.append("Server is no longer connected.\n" + \
 						"Please click the quit button to disconnect")
 			else:
-				self.send_message_field_obj.repaint()
 				self.send_message_field_obj.setText("")
-		os.system(clear)
+		#os.system(clear)
 
 
 	def recv_from_server(self):
@@ -98,13 +102,18 @@ class MainSend(QtGui.QMainWindow):
 			if self.encryption_method:
 				to_append = self.encryption_method.decrypt(to_append)
 			try:
+				print(to_append)
 				if "unicode" in to_append:
 					self.recv_message_field_obj.append("Server: Please don't enter unicode")
 				elif to_append == "break" or to_append == "server_break":
-					self.recv_message_field_obj.append("Server is no longer running.\n" + \
-						"Press the quit button to exit.")
+					self.recv_message_field_obj.append("<span style=\"color: #ff0000; font-weight: 700\">" + \
+						"Server is no longer running.\n" + \
+						"Press the quit button to exit.</span>")
 				else:
-					self.recv_message_field_obj.append(to_append.strip())
+					to_append = to_append.split(" ")
+					if to_append[0].lower() == "server":
+					username_append = "<span style=\"color: #000; font-weight: 700;\">{}</span>".format(to_append.pop(0))
+					self.recv_message_field_obj.append(username_append + " ".join(to_append[1:]))
 			except (AttributeError, TypeError):
 				self._is_running = False
 
@@ -226,7 +235,6 @@ class ChooseServer(QtGui.QMainWindow):
 	def display_error(self, error_message):
 		"""Shows an error message on the login screen"""
 
-		self.error_message.repaint()
 		self.error_message.setText(error_message)
 		self.error_message.setStyleSheet("color: red; font-weight: 700")
 
@@ -279,7 +287,6 @@ class GetUsername(QtGui.QMainWindow):
 	def display_error(self, message):
 		"""Displays an error if one occurs"""
 
-		self.username_error.repaint()
 		self.username_error.setText(message)
 
 
@@ -572,9 +579,3 @@ except KeyboardInterrupt:
 		break_text = "client_break"
 	client.send_message(break_text)
 	sys.exit()
-
-
-
-
-
-	####KEY WONT UPDATE> NEED TO FIX THIS
