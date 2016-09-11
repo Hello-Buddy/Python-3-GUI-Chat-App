@@ -15,7 +15,7 @@ class MainSend(QtGui.QMainWindow):
 
 		super(MainSend, self).__init__()
 		self.setGeometry(100, 100, 800, 600)
-		self.setWindowTitle("Haiku Chat Client V1.0")
+		self.setWindowTitle("Haiku Chat Client V1.1")
 		self.setStyleSheet("background-color: #6d6968")
 		start_new_thread(self.recv_from_server, ())
 		self.client = client
@@ -72,25 +72,26 @@ class MainSend(QtGui.QMainWindow):
 	def send_message(self):
 		"""Sends a message to the server"""
 
-		text_to_append = self.send_message_field_obj.toPlainText()
-		text_to_append = text_to_append.replace("\n", "")
-		if self.encryption_method:
-			text_to_send = self.encryption_method.encrypt(text_to_append)
-		if text_to_append:
-			if text_to_append != "client_break" and text_to_append != "server_break":
-				#Add the color to this so youre user name appears different
-				username_append = "<span style=\"color: #00ffbc; font-weight: 700\">You: </span>"
-				self.recv_message_field_obj.append(username_append + text_to_append)
-				if self.encryption_method:
+		text_to_send = self.send_message_field_obj.toPlainText()
+		if len(text_to_send) > 1500:
+			self.send_message_field_obj.setText("")
+			self.recv_message_field_obj.append("<span style=\"color: #ff0000; font-weight: 700\">Server: </span>Text entered is to long")
+		else:
+			text_to_send = text_to_send.replace("\n", "")
+			if text_to_send:
+				if text_to_send != "client_break" and text_to_send != "server_break":
+					if text_to_send[0] != "/":
+						self.recv_message_field_obj.append("<span style=\"color: #00ffbc; font-weight: 700\">You: </span>" + text_to_send)
+					if self.encryption_method:
+						text_to_send = self.encryption_method.encrypt(text_to_send)
 					client_send_ret = self.client.send_message(text_to_send)
+					self.send_message_field_obj.setText("")
+					if client_send_ret == "broken":
+						self.recv_message_field_obj.append("<span style=\"color: #ff0000; font-weight: 700\">" + \
+							"Server is no longer running.\n" + \
+							"Press the quit button to exit.</span>")
 				else:
-					client_send_ret = self.client.send_message(text_to_append)
-				self.send_message_field_obj.setText("")
-				if client_send_ret == "broken":
-					self.recv_message_field_obj.append("Server is no longer connected.\n" + \
-						"Please click the quit button to disconnect")
-			else:
-				self.send_message_field_obj.setText("")
+					self.send_message_field_obj.setText("")
 		#os.system(clear)
 
 
@@ -99,23 +100,20 @@ class MainSend(QtGui.QMainWindow):
 
 		while True:
 			to_append = self.client.recv_messages()
-			if self.encryption_method:
-				to_append = self.encryption_method.decrypt(to_append)
-			try:
-				print(to_append)
-				if "unicode" in to_append:
-					self.recv_message_field_obj.append("Server: Please don't enter unicode")
-				elif to_append == "break" or to_append == "server_break":
-					self.recv_message_field_obj.append("<span style=\"color: #ff0000; font-weight: 700\">" + \
-						"Server is no longer running.\n" + \
-						"Press the quit button to exit.</span>")
-				else:
-					to_append = to_append.split(" ")
-					if to_append[0].lower() == "server":
-					username_append = "<span style=\"color: #000; font-weight: 700;\">{}</span>".format(to_append.pop(0))
-					self.recv_message_field_obj.append(username_append + " ".join(to_append[1:]))
-			except (AttributeError, TypeError):
-				self._is_running = False
+			if to_append:
+				if self.encryption_method:
+					to_append = self.encryption_method.decrypt(to_append)
+				try:
+					if "unicode" in to_append:
+						self.recv_message_field_obj.append("Server: Please don't enter unicode")
+					elif to_append == "break" or to_append == "server_break":
+						self.recv_message_field_obj.append("<span style=\"color: #ff0000; font-weight: 700\">" + \
+							"Server is no longer running.\n" + \
+							"Press the quit button to exit.</span>")
+					else:
+						self.recv_message_field_obj.append(to_append)
+				except (AttributeError, TypeError):
+					self._is_running = False
 
 
 	def are_you_sure(self):
@@ -245,7 +243,7 @@ class GetUsername(QtGui.QMainWindow):
 
 		super(GetUsername, self).__init__()
 		self.setGeometry(100, 100, 500, 200)
-		self.setWindowTitle("Haiku Chat Client V1.0")
+		self.setWindowTitle("Haiku Chat Client V1.1")
 		self.setStyleSheet("background-color: #6d6968")
 		self.client = client
 		self.encryption_method = encryption_method
@@ -258,7 +256,7 @@ class GetUsername(QtGui.QMainWindow):
 		self.username_field_obj = QtGui.QLineEdit(self)
 		self.username_field_obj.move(125, 50)
 		self.username_field_obj.resize(250, 25)
-		self.username_field_obj.setMaxLength(30)
+		self.username_field_obj.setMaxLength(32)
 		self.username_field_obj.setStyleSheet("border: 3px solid #00ffbc; color: #fff; background-color: #9b9897")
 		username_label = QtGui.QLabel("Username", self)
 		username_label.move(50, 47)
@@ -273,15 +271,18 @@ class GetUsername(QtGui.QMainWindow):
 	def check_input(self, message):
 		"""Checks a persons input in the username field"""
 
-		if "Your username is now" in message:
-			return "DONE"
-		elif "unicode" in message:
-			self.display_error("Please don't enter unicode")
-		elif "That username is taken" in message:
-			self.display_error("Username is taken")
-		else:
-			self.display_error("Username not avalible")
-		self.username_field_obj.setText("")
+		try:
+			if "Your username is now" in message:
+				return "DONE"
+			elif "unicode" in message:
+				self.display_error("Please don't enter unicode")
+			elif "That username is taken" in message:
+				self.display_error("Username is taken")
+			else:
+				self.display_error("Username not avalible")
+			self.username_field_obj.setText("")
+		except TypeError:
+			self.display_error("Server no longer online")
 
 
 	def display_error(self, message):
