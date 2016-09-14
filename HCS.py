@@ -20,6 +20,8 @@ class Server:
 		self.text_check = string.ascii_letters + string.digits + string.punctuation + " "
 		self.conn_dict = {}
 		self.current_users = []
+		self.bad_users = ["", "server", "you"]
+		self.messages = []
 		try:
 			self.server.bind((host, port))
 		except socket.error as e:
@@ -60,16 +62,16 @@ class Server:
 		while True:
 			if counter == 1:
 				if self.encryption_method:
-					self.send_message("encrypt_TRUE", conn)
+					self.send_message("encrypt_TRUE", conn, addr)
 					while True:
 						encrypt_test = self.test_encryption(conn, addr)
 						if encrypt_test:
 							counter = 2
 							break
 						else:
-							self.send_message("wrong", conn)
+							self.send_message("wrong", conn, addr)
 				else:
-					self.send_message("encrypt_FALSE", conn)
+					self.send_message("encrypt_FALSE", conn, addr)
 					counter = 2
 			username = self.recv_message(conn, addr)
 			if username == "client_break":
@@ -82,27 +84,37 @@ class Server:
 						raise UnicodeError
 			except UnicodeError:
 				logging.info("\033[91m{}:{} tried setting their username to unicode\033[0m".format(addr[0], addr[1]))
-				send_test = self.send_message("Server: Please don't send unicode. Enter a normal username\n", conn)
+				send_test = self.send_message("Server: Please don't send unicode. Enter a normal username\n", conn, addr)
 				if send_test == "break":
 					self.stop_thread(addr, conn)
 			else:
-				if username not in self.current_users and username != "" and username != "server":
+				if username not in self.current_users and username not in self.bad_users:
 					logging.info("{} set their username as {}".format(addr[0], username))
-					self.send_message("Your username is now {}".format(username), conn)
+					self.send_message("Your username is now {}".format(username), conn, addr)
 					self.conn_dict[conn] = {"username" : username.lower(), "color" : self.colors["auto"]}
 					self.current_users.append(username)
 					welcome_message = "<span style=\"color: #ff0000; font-weight: 700\">Server: </span>" + \
 						"Please welcome {} to the chat room".format(username)
 					self.broadcast(welcome_message, conn, addr)
-					self.receive(conn, username, addr)
+					self.catchup(conn, username, addr)
 				if username == "":
-					send_test = self.send_message("Please enter something for your username\n", conn)
+					send_test = self.send_message("Please enter something for your username\n", conn, addr)
 					if send_test == "break":
 						self.stop_thread(addr, conn)
 				else:
-					send_test = self.send_message("That username is taken\n", conn)
-					if self.send_message == "break":
+					send_test = self.send_message("That username is taken\n", conn, addr)
+					if send_test == "break":
 						self.stop_thread(addr, conn)
+
+
+	def catchup(self, conn, username, addr):
+
+		while True:
+			test_message = self.recv_message(conn, addr)
+			if test_message == "ready":
+				for message in self.messages:
+					self.send_message(message, conn, addr)
+				self.receive(conn, username, addr)
 
 
 	def receive(self, conn, username, addr):
@@ -116,7 +128,7 @@ class Server:
 						raise UnicodeError
 			except UnicodeError:
 				logging.info("\033[91m{} tried sending unicode\033[0m".format(username))
-				sending_test = self.send_message("Server: Please don't send unicode. Only send normal messages\n", conn)
+				sending_test = self.send_message("Server: Please don't send unicode. Only send normal messages\n", conn, addr)
 				if sending_test == "break":
 					self.stop_thread(addr, conn)
 			else:
@@ -124,11 +136,11 @@ class Server:
 					command_error = "<span style=\"color: #ff0000; font-weight: 700\">Server: </span> Not a valid command"
 					message = message.replace("/", "").split(" ")
 					if message[0] in self.commands:
-						command_check = self.manage_commands(message, conn)
+						command_check = self.manage_commands(message, conn, addr)
 						if not command_check:
-							self.send_message(command_error, conn)
+							self.send_message(command_error, conn, addr)
 					else:
-						self.send_message(command_error, conn)
+						self.send_message(command_error, conn, addr)
 				elif message != "client_break" and message != "" and message != "break":
 					if self.conn_dict[conn]["color"] == "RAINBOW":
 						username_text = ""
@@ -142,16 +154,20 @@ class Server:
 						username_text = "<span style=\"color: {}; font-weight: 700\">{}:</span>".format(self.conn_dict[conn]["color"], username)
 					logging.info("{} said: {}".format(username, message))
 					self.broadcast(username_text + " " + message, conn, addr)
+					if len(self.messages) == 150:
+						self.messages.pop(149)
+					self.messages.append(username_text + " " + message)
 				elif message == "client_break":
 					self.stop_thread(addr, conn)
 
 
-	def manage_commands(self, message, conn):
+	def manage_commands(self, message, conn, addr):
 		"""Checks if a command given by the user is true or not"""
 
 		if message[0] == "setcolor" and message[1] in self.colors:
 			self.conn_dict[conn]["color"] = self.colors[message[1]]
-			self.send_message
+			success_command = "<span style=\"color: #ff0000; font-weight: 700\">Server: Command successful</span>"
+			self.send_message(success_command, conn, addr)
 		else:
 			return False	
 		return True
@@ -174,7 +190,7 @@ class Server:
 				self.stop_thread(addr, conn)
 
 
-	def send_message(self, message, conn):
+	def send_message(self, message, conn, addr):
 		"""Sends a message"""
 
 		if message[:7].lower() == "server":
@@ -265,10 +281,10 @@ class Server:
 			else:
 				check = self.encryption_method.decrypt(check)
 				if check == "test_MESSAGE":
-					self.send_message("crypt_TRUE", conn)
+					self.send_message("crypt_TRUE", conn, addr)
 					return True
 				else:
-					self.send_message("crypt_FALSE", conn)
+					self.send_message("crypt_FALSE", conn, addr)
 					return False
 
 
