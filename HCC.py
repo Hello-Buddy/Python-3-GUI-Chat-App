@@ -90,10 +90,6 @@ class MainSend(QtGui.QMainWindow):
                         self.recv_message_field_obj.append("<span style=\"color: #ff0000; font-weight: 700\">" + \
                             "Server is no longer running.\n" + \
                             "Press the quit button to exit.</span>")
-                    if text_to_send[0] == "/":
-                        command_return = self.client.recv_messages()
-                        if self.encryption_method:
-                            self.encryption_method.decrypt(command_return)
                 else:
                     self.send_message_field_obj.setText("")
         os.system(clear)

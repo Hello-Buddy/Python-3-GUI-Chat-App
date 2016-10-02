@@ -51,7 +51,10 @@ class Server:
                         "auto" : "#00ffbc",
                         "rainbow" : "RAINBOW",
         }
-        self.commands = {"setcolor" : "Changes your username's color",}
+        self.commands = {
+            "setcolor" : "Changes your username's color", 
+            "help" : "List avalible commands",
+        }
         self.server.listen(25)
 
     
@@ -164,7 +167,12 @@ class Server:
     def manage_commands(self, message, conn, addr):
         """Checks if a command given by the user is true or not"""
 
-        if message[0] == "setcolor" and message[1] in self.colors:
+        if message[0] == "help":
+            for key in self.commands.keys():
+                command = """<span style="color: #00ffbc; font-weight: 700">/{}</span>
+                <span style="color: #fff">{}</span>""".format(key, self.commands[key])
+                self.send_message(command, conn, addr)
+        elif message[0] == "setcolor" and message[1] in self.colors:
             self.conn_dict[conn]["color"] = self.colors[message[1]]
             success_command = "<span style=\"color: #ff0000; font-weight: 700\">Server: Command successful</span>"
             self.send_message(success_command, conn, addr)
